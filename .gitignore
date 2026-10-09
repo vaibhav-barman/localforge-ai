@@ -1,4 +1,6 @@
 # Virtual Environment
 .venv
+
 __pycache__/
 workspace/
+.DS_Store
