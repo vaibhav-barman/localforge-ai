@@ -29,6 +29,7 @@ def execute_generated_code(code_string: str) -> str:
             capture_output=True,
             text=True,
             timeout=10,
+            cwd="workspace"
         )
         
         if result.returncode == 0:
