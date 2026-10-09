@@ -41,12 +41,14 @@ def execute_generated_code(code_string: str, solution_dir: str) -> str:
         
         result = subprocess.run(
             ["python3", "generated_code.py"],
+            input="3\n", # Simulates a user typing '3' and hitting Enter
             capture_output=True,
             text=True,
-            timeout=8, # Strict 8-second safety cutoff
+            timeout=8,
             cwd=solution_dir,
             env=env_sandbox
         )
+
         
         if result.returncode == 0:
             return f"SUCCESS\nSTDOUT:\n{result.stdout}"

@@ -62,7 +62,7 @@ def software_engineer_agent(state: AgentState) -> dict:
     }
 
 def qa_tester_agent(state: AgentState) -> dict:
-    """Executes code via local sandboxed folder, rendering active pipeline telemetry tests."""
+    """Executes code via local sandboxed folder, checking for runtime errors AND empty outputs."""
     from src.tools import execute_generated_code
     
     render_agent_header("QA Tester", "Linter Suite & Subprocess Script Run", "Running Telemetry Audits")
@@ -71,20 +71,30 @@ def qa_tester_agent(state: AgentState) -> dict:
     logs = execute_generated_code(state["source_code"], state["solution_dir"])
     current_errors = state.get("error_count", 0)
     
-    if "ERROR" in logs or "TIMEOUT" in logs or "WARNING" in logs:
+    # --- UPGRADED VALIDATION ENGINE CONDITION ---
+    # We check if the execution was a success, but look to see if stdout is empty
+    is_empty_output = "SUCCESS" in logs and ("STDOUT:\n" not in logs or logs.split("STDOUT:\n")[1].strip() == "")
+    
+    if "ERROR" in logs or "TIMEOUT" in logs or "WARNING" in logs or is_empty_output:
         current_errors += 1
-        print(f"\n[\033[91m⚠️ WARNING\033[0m] QA Telemetry Failed! Routing logs back to engineering loop.")
         
-        analysis_prompt = f"""You are a Quality Assurance Automation Engineer. Analyze this python execution log error and briefly state exactly what went wrong and how to fix it in 2-3 sentences.
-        Code written:\n{state['source_code']}\nExecution Failure Logs:\n{logs}"""
+        # Override logs message if the problem is just an empty output window
+        if is_empty_output:
+            logs = "LOGIC ERROR: The script executed successfully but generated 0 lines of console output. You defined functions/classes but forgot to invoke them using print() statements to show results."
+            print(f"\n[\033[91m⚠️ WARNING\033[0m] QA Check Failed: Empty stdout detected. Routing back to engineer to append execution invocations.")
+        else:
+            print(f"\n[\033[91m⚠️ WARNING\033[0m] QA Telemetry Failed! Routing logs back to engineering loop.")
+        
+        analysis_prompt = f"""You are a Quality Assurance Automation Engineer. Analyze this python execution error or validation warning and state exactly what is missing and how to fix it in 2-3 sentences.
+        Code written:\n{state['source_code']}\nExecution Validation Logs:\n{logs}"""
         analysis_response = qa_analyzer_model.invoke(analysis_prompt)
         qa_feedback = analysis_response.content
     else:
-        qa_feedback = "No errors detected. Code works perfectly."
+        qa_feedback = "No errors detected. Code works perfectly and generates visible output."
         
     return {
         "execution_logs": logs,
         "qa_analysis": qa_feedback,
         "error_count": current_errors,
-        "iteration_history": state.get("iteration_history", []) + [f"QA validation executed: {'Passed' if 'SUCCESS' in logs else 'Failed. Retrying developer loop.'}."]
+        "iteration_history": state.get("iteration_history", []) + [f"QA validation executed: {'Passed' if 'SUCCESS' in logs and not is_empty_output else 'Failed empty validation check. Retrying developer loop.'}."]
     }
