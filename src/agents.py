@@ -3,10 +3,11 @@ from langchain_ollama import ChatOllama
 from src.state import AgentState
 from src.ui import render_agent_header, run_progress_bar
 
-# Initialize the models
-pm_model = ChatOllama(model="llama3.1:latest", temperature=0.2)
-coder_model = ChatOllama(model="qwen2.5-coder:7b", temperature=0.1)
-qa_analyzer_model = ChatOllama(model="llama3.2:3b", temperature=0.1)
+# Adding context ceilings prevents open-weight models from hanging on long code generations
+pm_model = ChatOllama(model="llama3.1:latest", temperature=0.2, num_predict=1024)
+coder_model = ChatOllama(model="qwen2.5-coder:7b", temperature=0.1, num_predict=2048)
+qa_analyzer_model = ChatOllama(model="llama3.2:3b", temperature=0.1, num_predict=512)
+
 
 def product_manager_agent(state: AgentState) -> dict:
     """Transforms raw requirements into technical code specifications with live UI logging."""

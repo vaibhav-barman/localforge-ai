@@ -34,13 +34,18 @@ def execute_generated_code(code_string: str, solution_dir: str) -> str:
         return f"CODE QUALITY WARNING:\n{lint_warnings}\nPlease remove unused imports or unused variables to make the codebase clean."
         
     try:
-        # Executes directly inside the dedicated target solution subdirectory sandbox context
+        # ENVIRONMENT FIX: Isolate environment copies to enforce windowless execution mode
+        env_sandbox = os.environ.copy()
+        env_sandbox["TK_SILENT_MODE"] = "1"
+        env_sandbox["PYTHONUNBUFFERED"] = "1"
+        
         result = subprocess.run(
             ["python3", "generated_code.py"],
             capture_output=True,
             text=True,
-            timeout=10,
-            cwd=solution_dir
+            timeout=8, # Strict 8-second safety cutoff
+            cwd=solution_dir,
+            env=env_sandbox
         )
         
         if result.returncode == 0:
@@ -48,11 +53,14 @@ def execute_generated_code(code_string: str, solution_dir: str) -> str:
         else:
             return f"RUN-TIME ERROR:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
             
-    except subprocess.TimeoutExpired:
-        return "TIMEOUT ERROR: The script execution took too long. Check for infinite loops."
+    except subprocess.TimeoutExpired as e:
+        # HARD PROCESS TERMINATION: Kills the frozen subprocess immediately to unlock your terminal
+        if hasattr(e, 'process') and e.process:
+            e.process.kill()
+        return "TIMEOUT ERROR: Script execution timed out. This could be due to an unresolved infinite network loop or blocking GUI threads."
 
 def save_qa_report(final_state: dict) -> None:
-    """Generates and writes a comprehensive QA Validation Report markdown artifact to the solution directory."""
+    """Generates and writes a comprehensive QA Validation Report markdown artifact."""
     target_dir = final_state["solution_dir"]
     report_path = os.path.join(target_dir, "qa_validation_report.md")
     
@@ -65,20 +73,17 @@ def save_qa_report(final_state: dict) -> None:
 
 ## 💻 Code Linting & Static Analysis Logs
 ```text
-{final_state.get('qa_analysis', 'No execution anomalies detected during build static linting.')}
+{final_state.get('qa_analysis', 'No execution anomalies detected.')}
 ```
 
 ## 🖥️ Subprocess Run-Time Logs (stdout / stderr)
 ```text
 {final_state.get('execution_logs', 'No runtime logs recorded.')}
 ```
-
----
-*Report generated autonomously by AgenticQA-Coder Framework.*
 """
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(report_content)
-    print(f"💾 QA Validation Report successfully archived: {report_path}")
+    print(f"💾 QA Validation Report successfully archived: {report_path}", flush=True)
 
 def import_reporter(warning_stream, error_stream):
     from pyflakes.reporter import Reporter
