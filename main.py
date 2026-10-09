@@ -1,4 +1,6 @@
+import os
 from src.graph import build_workflow
+from src.tools import save_qa_report  # Import the new report function
 
 def main():
     print("==============================================")
@@ -28,7 +30,23 @@ def main():
         print(f"✔ {event}")
     print("==============================================")
     
-    print("\n💾 Script processing completed. Target saved: workspace/generated_code.py")
+    # --- NEW: ARTIFACT WRITING LAYER ---
+    os.makedirs("workspace", exist_ok=True)
+    
+    # 1. Save the Product Manager Specification Document
+    pm_spec_path = os.path.join("workspace", "product_specification.md")
+    with open(pm_spec_path, "w", encoding="utf-8") as f:
+        f.write(f"# 📋 Technical Product Specification\n\n**Original Request:** {user_prompt}\n\n{final_output['specification']}")
+    print(f"💾 PM Specification Document archived: {pm_spec_path}")
+    
+    # 2. Save the Final Generated System Source Code File
+    # (This is already saved inside src/agents.py via execute_generated_code, but good to confirm context)
+    
+    # 3. Save the QA Analysis Audit Report File
+    save_qa_report(final_output)
+    # ------------------------------------
+    
+    print("\n🎉 Build Pipeline Finished! Check your '/workspace' directory for all compiled assets.")
 
 if __name__ == "__main__":
     main()

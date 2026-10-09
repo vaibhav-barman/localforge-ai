@@ -28,7 +28,7 @@ def execute_generated_code(code_string: str) -> str:
             ["python3", file_path],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=10,
         )
         
         if result.returncode == 0:
@@ -43,3 +43,31 @@ def execute_generated_code(code_string: str) -> str:
 def import_reporter(warning_stream, error_stream):
     from pyflakes.reporter import Reporter
     return Reporter(warning_stream, error_stream)
+
+def save_qa_report(final_state: dict) -> None:
+    """Generates and writes a comprehensive QA Validation Report markdown artifact to disk."""
+    os.makedirs("workspace", exist_ok=True)
+    report_path = os.path.join("workspace", "qa_validation_report.md")
+    
+    report_content = f"""# 📑 QA Validation & Execution Report
+
+## 📊 Build Telemetry Metrics
+- **Total Self-Correction Cycles:** {final_state.get('error_count', 0)}
+- **Final System Status:** {"✅ PASSED" if "SUCCESS" in final_state.get('execution_logs', '') else "⚠️ TERMINATED WITH WARNINGS"}
+
+## 💻 Code Linting & Static Analysis Logs
+```text
+{final_state.get('qa_analysis', 'No execution anomalies detected during build static linting.')}
+```
+
+## 🖥️ Subprocess Run-Time Logs (stdout / stderr)
+```text
+{final_state.get('execution_logs', 'No runtime logs recorded.')}
+```
+
+---
+*Report generated autonomously by AgenticQA-Coder Framework.*
+"""
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(report_content)
+    print("💾 QA Validation Report successfully archived: workspace/qa_validation_report.md")
