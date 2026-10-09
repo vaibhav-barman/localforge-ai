@@ -8,3 +8,4 @@ class AgentState(TypedDict):
     qa_analysis: str             # Structural breakdown of bugs from the QA Agent
     error_count: int             # Total loop counts
     iteration_history: List[str] # Tracking log array for user visibility
+    solution_dir: str            # NEW: Dynamic destination folder (e.g., 'workspace/solution_1')

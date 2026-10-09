@@ -56,17 +56,16 @@ def software_engineer_agent(state: AgentState) -> dict:
     }
 
 def qa_tester_agent(state: AgentState) -> dict:
-    """Executes code via local sandboxed shell, then leverages LLM reasoning to parse error output."""
+    """Executes code via local sandboxed folder, then leverages LLM reasoning to parse error output."""
     from src.tools import execute_generated_code
     
-    # Step 1: Run the physical code execution check
-    logs = execute_generated_code(state["source_code"])
+    # NEW: Pass state["solution_dir"] down to keep executions targeted inside solution_X
+    logs = execute_generated_code(state["source_code"], state["solution_dir"])
     current_errors = state.get("error_count", 0)
     
     if "ERROR" in logs or "TIMEOUT" in logs:
         current_errors += 1
         
-        # Step 2: Use the light 3B model to analyze what broke and provide clear feedback
         analysis_prompt = f"""You are a Quality Assurance Automation Engineer. Analyze this python execution log error and briefly state exactly what went wrong and how to fix it in 2-3 sentences.
         
         Code written:
